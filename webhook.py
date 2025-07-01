@@ -1,14 +1,8 @@
 from flask import Flask, request
 import requests
 import os
-import asyncio
 import db
 from dotenv import load_dotenv
-
-# если хочешь оставить run_until_complete внутри Flask
-# добавляем nest_asyncio:
-import nest_asyncio
-nest_asyncio.apply()
 
 load_dotenv()
 
@@ -31,9 +25,7 @@ def handle_webhook():
             print("⛔ No phone number found")
             return 'OK', 200
 
-        # теперь мы можем смело вызывать run_until_complete
-        loop = asyncio.get_event_loop()
-        chat_id = loop.run_until_complete(db.get_chat_id_by_phone(phone))
+        chat_id = db.get_chat_id_by_phone(phone)
 
         print(f"🔍 Phone: {phone}, Chat ID: {chat_id}")
 
@@ -57,11 +49,6 @@ def handle_webhook():
         print("❌ Error in /webhook:", e)
         return 'OK', 200
 
-
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 8080))
-
-    # инициализация базы один раз перед запуском
-    asyncio.run(db.init_db())
-
     app.run(host="0.0.0.0", port=port)
