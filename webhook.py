@@ -46,7 +46,9 @@ def handle_webhook():
                 f"📅 Новая запись!\n\n"
                 f"🕒 Время: {data.get('time')}\n"
                 f"📍 Адрес: {data.get('location_address_formatted')}\n"
-                f"🧾 Услуга: {data.get('service_name')}"
+                f"🧾 Услуга: {data.get('service_name')}\n"
+                f"🧾 Исполнитель: {data.get('user_name')}\n"
+                f"🧾 Цена: {data.get('booking_price_formatted')}"
             )
         elif event_type == "booking.updated":
             text = (
