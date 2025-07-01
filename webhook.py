@@ -19,19 +19,19 @@ def handle_webhook():
 
         if not data:
             print("⛔ Invalid JSON")
-            return 'Invalid JSON', 400
+            return 'OK', 200  # Возвращаем OK, даже если ошибка
 
         phone = data.get('customer_phone') or data.get('customer_attributes', {}).get('customer_phone')
         if not phone:
             print("⛔ No phone number found")
-            return 'No phone number found', 400
+            return 'OK', 200  # Тоже OK
 
         chat_id = db.get_chat_id_by_phone(phone)
         print(f"🔍 Phone: {phone}, Chat ID: {chat_id}")
 
         if not chat_id:
             print("⛔ No user found")
-            return 'No user found for this phone', 404
+            return 'OK', 200  # OK даже если чат не найден
 
         text = (
             f"📅 У вас новая запись!\n\n"
@@ -43,10 +43,11 @@ def handle_webhook():
         response = requests.post(TELEGRAM_API, json={"chat_id": chat_id, "text": text})
         print(f"📨 Telegram response: {response.status_code}, {response.text}")
 
-        if response.status_code != 200:
-            return f"Telegram error: {response.text}", 500
+        return 'OK', 200  # Успешно
 
-        return 'Message sent', 200
+    except Exception as e:
+        print("❌ Error in /webhook:", e)
+        return 'OK', 200  # Даже в случае исключения — OK
 
     except Exception as e:
         print("❌ Error in /webhook:", e)
