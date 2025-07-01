@@ -11,10 +11,12 @@ app = Flask(__name__)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
-@app.before_first_request
-def setup():
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(db.init_db())
+# ✅ Глобальный запуск и инициализация базы
+@app.before_request
+def ensure_pool():
+    if db.pool is None:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(db.init_db())
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
