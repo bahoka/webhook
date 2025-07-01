@@ -1,31 +1,34 @@
-import sqlite3
+import asyncpg
+import os
+from dotenv import load_dotenv
 
-DB_NAME = 'users.db'
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            phone TEXT UNIQUE,
-            chat_id TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
+pool = None
 
-def get_chat_id_by_phone(phone):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('SELECT chat_id FROM users WHERE phone = ?', (phone,))
-    result = c.fetchone()
-    conn.close()
-    return result[0] if result else None
+async def init_db():
+    global pool
+    pool = await asyncpg.create_pool(DATABASE_URL)
+    async with pool.acquire() as conn:
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                phone TEXT UNIQUE NOT NULL,
+                chat_id BIGINT NOT NULL
+            )
+        ''')
 
-def save_user(phone, chat_id):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('INSERT OR REPLACE INTO users (phone, chat_id) VALUES (?, ?)', (phone, chat_id))
-    conn.commit()
-    conn.close()
+async def save_user(phone, chat_id):
+    async with pool.acquire() as conn:
+        await conn.execute('''
+            INSERT INTO users (phone, chat_id)
+            VALUES ($1, $2)
+            ON CONFLICT (phone)
+            DO UPDATE SET chat_id = EXCLUDED.chat_id
+        ''', phone, chat_id)
+
+async def get_chat_id_by_phone(phone):
+    async with pool.acquire() as conn:
+        result = await conn.fetchrow('SELECT chat_id FROM users WHERE phone = $1', phone)
+        return result['chat_id'] if result else None
