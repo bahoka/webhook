@@ -20,15 +20,17 @@ def handle_webhook():
             print("⛔ Invalid JSON")
             return 'OK', 200
 
-        event_type = data.get('event')  # <-- вот тут читаем тип события
-        print(f"📌 Event type: {event_type}")
+        # event приходит из query string
+        event_type = request.args.get("event")
+        print(f"📌 Event type from query: {event_type}")
 
         phone = data.get('customer_phone') or data.get('customer_attributes', {}).get('customer_phone')
         if not phone:
             print("⛔ No phone number found")
             return 'OK', 200
 
-        chat_id = db.get_chat_id_by_phone(phone)
+        import asyncio
+        chat_id = asyncio.run(db.get_chat_id_by_phone(phone))
 
         print(f"🔍 Phone: {phone}, Chat ID: {chat_id}")
 
@@ -36,39 +38,31 @@ def handle_webhook():
             print("⛔ No user found")
             return 'OK', 200
 
-        # теперь разные тексты по событию
-        if event_type == "booking-created":
+        # разные сообщения
+        if event_type == "booking.created":
             text = (
                 f"📅 Новая запись!\n\n"
                 f"🕒 Время: {data.get('time')}\n"
                 f"📍 Адрес: {data.get('location_address_formatted')}\n"
                 f"🧾 Услуга: {data.get('service_name')}"
             )
-        elif event_type == "booking-updated":
+        elif event_type == "booking.updated":
             text = (
                 f"✏️ Запись обновлена!\n\n"
-                f"🕒 Новое время: {data.get('time')}\n"
+                f"🕒 Время: {data.get('time')}\n"
+                f"📍 Адрес: {data.get('location_address_formatted')}\n"
                 f"🧾 Услуга: {data.get('service_name')}"
             )
-        elif event_type == "booking-succeeded":
+        elif event_type == "booking.canceled":
             text = (
-                f"✅ Ваша запись успешно завершена!\n\n"
-                f"Спасибо, что воспользовались нашими услугами!"
-            )
-        elif event_type == "booking-canceled":
-            text = (
-                f"❌ Ваша запись отменена.\n\n"
-                f"Если это ошибка — свяжитесь с нами!"
-            )
-        elif event_type == "booking-rescheduled":
-            text = (
-                f"🔄 Ваша запись перенесена!\n\n"
-                f"🕒 Новое время: {data.get('time')}"
+                f"❌ Запись отменена.\n\n"
+                f"🕒 Время: {data.get('time')}\n"
+                f"🧾 Услуга: {data.get('service_name')}"
             )
         else:
             text = (
                 f"📢 Новое событие: {event_type}\n\n"
-                f"Проверьте детали."
+                f"Данные брони:\n{data}"
             )
 
         response = requests.post(TELEGRAM_API, json={"chat_id": chat_id, "text": text})
