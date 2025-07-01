@@ -26,21 +26,54 @@ def handle_webhook():
             return 'OK', 200
 
         chat_id = db.get_chat_id_by_phone(phone)
-
         print(f"🔍 Phone: {phone}, Chat ID: {chat_id}")
 
         if not chat_id:
             print("⛔ No user found")
             return 'OK', 200
 
-        text = (
-            f"📅 У вас новая запись!\n\n"
-            f"🕒 Время: {data.get('time')}\n"
-            f"📍 Адрес: {data.get('location_address_formatted')}\n"
-            f"🧾 Услуга: {data.get('service_name')}"
-        )
+        # определяем событие
+        event_type = data.get("event", "booking-created")
 
-        response = requests.post(TELEGRAM_API, json={"chat_id": chat_id, "text": text})
+        if event_type == "booking-created":
+            text = (
+                f"✅ *Новая запись!*\n\n"
+                f"🕒 Время: {data.get('time')}\n"
+                f"📍 Адрес: {data.get('location_address_formatted')}\n"
+                f"🧾 Услуга: {data.get('service_name')}"
+            )
+        elif event_type == "booking-updated":
+            text = (
+                f"✏️ *Запись обновлена!*\n\n"
+                f"🕒 Новое время: {data.get('time')}\n"
+                f"📍 Новый адрес: {data.get('location_address_formatted')}\n"
+                f"🧾 Услуга: {data.get('service_name')}"
+            )
+        elif event_type == "booking-succeeded":
+            text = (
+                f"🎉 *Запись успешно завершена!*\n\n"
+                f"Спасибо, что воспользовались нашими услугами."
+            )
+        elif event_type == "booking-canceled":
+            text = (
+                f"❌ *Запись отменена!*\n\n"
+                f"Если это ошибка, свяжитесь с нами."
+            )
+        elif event_type == "booking-rescheduled":
+            text = (
+                f"🔄 *Запись перенесена!*\n\n"
+                f"🕒 Новое время: {data.get('time')}\n"
+                f"📍 Новый адрес: {data.get('location_address_formatted')}\n"
+                f"🧾 Услуга: {data.get('service_name')}"
+            )
+        else:
+            text = "ℹ️ Получено неизвестное событие."
+
+        # отправляем Telegram
+        response = requests.post(
+            TELEGRAM_API,
+            json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+        )
         print(f"📨 Telegram response: {response.status_code}, {response.text}")
 
         return 'OK', 200
