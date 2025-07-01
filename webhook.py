@@ -24,21 +24,23 @@ def handle_webhook():
         event_type = request.args.get("event")
         print(f"📌 Event type from query: {event_type}")
 
-        phone = data.get('customer_phone') or data.get('customer_attributes', {}).get('customer_phone')
+        phone = (
+            data.get('customer_phone')
+            or data.get('customer_attributes', {}).get('customer_phone')
+        )
+
         if not phone:
             print("⛔ No phone number found")
             return 'OK', 200
 
-        import asyncio
-        chat_id = asyncio.run(db.get_chat_id_by_phone(phone))
-
+        chat_id = db.get_chat_id_by_phone(phone)
         print(f"🔍 Phone: {phone}, Chat ID: {chat_id}")
 
         if not chat_id:
-            print("⛔ No user found")
+            print("⛔ No user found in DB")
             return 'OK', 200
 
-        # разные сообщения
+        # формируем текст
         if event_type == "booking.created":
             text = (
                 f"📅 Новая запись!\n\n"
@@ -73,6 +75,7 @@ def handle_webhook():
     except Exception as e:
         print("❌ Error in /webhook:", e)
         return 'OK', 200
+
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 8080))
