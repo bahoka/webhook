@@ -5,18 +5,16 @@ import asyncio
 import db
 from dotenv import load_dotenv
 
+# если хочешь оставить run_until_complete внутри Flask
+# добавляем nest_asyncio:
+import nest_asyncio
+nest_asyncio.apply()
+
 load_dotenv()
 
 app = Flask(__name__)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-
-# ✅ Глобальный запуск и инициализация базы
-@app.before_request
-def ensure_pool():
-    if db.pool is None:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(db.init_db())
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
@@ -33,7 +31,7 @@ def handle_webhook():
             print("⛔ No phone number found")
             return 'OK', 200
 
-        # ✅ Получаем chat_id из базы
+        # теперь мы можем смело вызывать run_until_complete
         loop = asyncio.get_event_loop()
         chat_id = loop.run_until_complete(db.get_chat_id_by_phone(phone))
 
@@ -59,6 +57,11 @@ def handle_webhook():
         print("❌ Error in /webhook:", e)
         return 'OK', 200
 
+
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 8080))
+
+    # инициализация базы один раз перед запуском
+    asyncio.run(db.init_db())
+
     app.run(host="0.0.0.0", port=port)
